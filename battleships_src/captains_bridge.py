@@ -7,6 +7,7 @@ class BattleshipApp:
         self.game = BattleshipGame()
         self.cursor_position = [0, 0]
         self.view_mode = 'ships'  # can be 'ships' or 'attacks'
+        self.current_player = 'player1'  # Start with player1
 
         self.setup_ui()
 
@@ -33,9 +34,9 @@ class BattleshipApp:
         for row in range(8):
             for col in range(8):
                 if self.view_mode == 'ships':
-                    value = self.game.get_board()[row][col]
+                    value = self.game.get_board(self.current_player)[row][col]
                 else:
-                    value = self.game.get_attacks()[row][col]
+                    value = self.game.get_attacks(self.current_player)[row][col]
                 button = tk.Button(self.grid_frame, text=value, width=2, height=1)
                 button.grid(row=row, column=col)
                 if [row, col] == self.cursor_position:
@@ -64,11 +65,13 @@ class BattleshipApp:
     def select_position(self, event):
         row, col = self.cursor_position
         if self.view_mode == 'attacks':
-            hit = self.game.attack(row, col)
+            hit = self.game.attack(self.current_player, row, col)
             if hit:
                 self.info_label.config(text=f"Hit at ({row}, {col})!")
             else:
                 self.info_label.config(text=f"Miss at ({row}, {col}).")
+            self.game.switch_turn()
+            self.current_player = self.game.get_current_player()
         self.draw_grid()
 
     def switch_view(self):
