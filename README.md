@@ -1,5 +1,5 @@
 # About
-Battleships game developed for multiplatform multiplayer: from a custom handheld device, locally on RasPi or linux based machine, LAN device or LAN website. To be hosted on a Linux based machine like a Raspberry Pi.
+Battleships game developed on Python and Arduino C++ for multiplatform multiplayer: from a custom handheld device, locally on RasPi or linux based machine, LAN device or LAN website. To be hosted on a Linux based machine like a Raspberry Pi.
 
 ## Details
 Webserver hosts a website through a TCP websocket for easy conectivity and gameplay over LAN.
