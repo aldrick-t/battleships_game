@@ -1,14 +1,37 @@
 import serial
-import threading
+import time
 
-def read_from_arduino(ser):
+BAUDRATES = [
+    2400,
+    4800, 
+    9600, 
+    19200, 
+    38400, 
+    57600, 
+    115200
+]
+
+class SerialCommunicator:
+    def __init__(self, port, baudrate=9600):
+        self.ser = serial.Serial(port, baudrate, timeout=1)
+        time.sleep(2)  # wait for the serial connection to initialize
+
+    def send(self, message):
+        self.ser.write(message.encode())
+
+    def receive(self):
+        if self.ser.in_waiting > 0:
+            return self.ser.readline().decode().strip()
+        return None
+
+    def close(self):
+        self.ser.close()
+
+# Example usage:
+if __name__ == "__main__":
+    communicator = SerialCommunicator('/dev/ttyUSB0')
+    communicator.send("Hello, Arduino!")
     while True:
-        line = ser.readline().decode('utf-8').rstrip()
-        print(f"Arduino: {line}")
-
-# Initialize serial connection with Arduino
-ser = serial.Serial('/dev/ttyUSB0', 9600, timeout=1)
-threading.Thread(target=read_from_arduino, args=(ser,)).start()
-
-# Example: Send a command to the Arduino
-ser.write(b'Your command\n')
+        response = communicator.receive()
+        if response:
+            print("Received from Arduino:", response)

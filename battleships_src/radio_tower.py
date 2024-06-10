@@ -4,7 +4,7 @@ import json
 
 app = FastAPI()
 
-from third_deck import BattleshipGame
+from third_deck import BattleshipGame  # Assuming 'third_deck.py' is your backend file
 
 game = BattleshipGame()
 
@@ -16,14 +16,31 @@ async def get():
             <title>Battleship</title>
         </head>
         <body>
-            <h1>Battleship Game</h1>
-            <div id="game"></div>
+            <h1>Battleships Game</h1>
+            <div id="game">
+                <button onclick="connectSerial()">Connect Serial</button>
+                <button onclick="connectLan()">Connect LAN</button>
+                <button onclick="connectWeb()">Connect Web</button>
+                <div id="gameBoard"></div>
+            </div>
             <script>
                 var ws = new WebSocket("ws://" + location.host + "/ws");
                 ws.onmessage = function(event) {
-                    var gameElement = document.getElementById("game");
+                    var gameElement = document.getElementById("gameBoard");
                     gameElement.innerHTML = event.data;
                 };
+
+                function connectSerial() {
+                    ws.send(JSON.stringify({action: "connect", type: "serial"}));
+                }
+
+                function connectLan() {
+                    ws.send(JSON.stringify({action: "connect", type: "lan"}));
+                }
+
+                function connectWeb() {
+                    ws.send(JSON.stringify({action: "connect", type: "web"}));
+                }
 
                 function sendMove(row, col) {
                     ws.send(JSON.stringify({action: "move", row: row, col: col}));
@@ -44,7 +61,17 @@ async def websocket_endpoint(websocket: WebSocket):
     while True:
         data = await websocket.receive_text()
         message = json.loads(data)
-        if message["action"] == "move":
+        if message["action"] == "connect":
+            if message["type"] == "serial":
+                # Implement serial connection
+                await websocket.send_text("Serial connection selected.")
+            elif message["type"] == "lan":
+                # Implement LAN connection
+                await websocket.send_text("LAN connection selected. Temporary test message.")
+            elif message["type"] == "web":
+                # Implement web connection
+                await websocket.send_text("Web connection selected.")
+        elif message["action"] == "move":
             player = game.get_current_player()
             row = message["row"]
             col = message["col"]
