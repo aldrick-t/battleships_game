@@ -14,7 +14,7 @@ class BattleshipApp:
         self.root = root
         self.game = BattleshipGame()
         self.cursor_position = [0, 0]
-        self.view_mode = 'placement'  # placement, ships, or attacks
+        self.view_mode = 'ships'  # ships or attacks
         self.current_player = 'player1'
         self.serial_comm = None
         self.raspberry_pi_ip = None
@@ -72,10 +72,10 @@ class BattleshipApp:
         self.ip_label.grid(row=6, column=0, padx=5, pady=5)
 
         self.ip_entry = tk.Entry(self.root)
-        self.ip_entry.grid(row=6, column=1, padx=5, pady=5)
+        self.ip_entry.grid(row=6, column=2, padx=5, pady=5)
 
         self.connect_ip_button = tk.Button(self.root, text="Connect", command=self.connect_ip)
-        self.connect_ip_button.grid(row=6, column=2, padx=5, pady=5)
+        self.connect_ip_button.grid(row=6, column=3, padx=5, pady=5)
 
         self.draw_grid()
 
@@ -88,7 +88,7 @@ class BattleshipApp:
     def draw_grid(self):
         for row in range(8):
             for col in range(8):
-                if self.view_mode == 'placement' or self.view_mode == 'ships':
+                if self.view_mode == 'ships':
                     value = self.game.get_board(self.current_player)[row][col]
                 else:
                     value = self.game.get_attacks(self.current_player)[row][col]
@@ -139,17 +139,23 @@ class BattleshipApp:
                 self.info_label.config(text=f"Hit at ({row}, {col})!")
             else:
                 self.info_label.config(text=f"Miss at ({row}, {col}).")
+            self.serial_comm.send(f"attack:{row},{col}")
+            self.wait_for_opponent()
             self.game.switch_turn()
             self.current_player = self.game.get_current_player()
             self.draw_grid()
-            if self.current_player == 'player2':
-                self.receive_serial_attack()
+
+    def wait_for_opponent(self):
+        response = self.serial_comm.receive()
+        if response and response.startswith("attack:"):
+            row, col = map(int, response.split(":", 1)[1].split(","))
+            hit = self.game.attack('player2', row, col)
+            self.serial_comm.send(f"result:{'hit' if hit else 'miss'}")
+            self.info_label.config(text=f"Opponent attacked ({row}, {col}) and it was a {'hit' if hit else 'miss'}.")
+            self.draw_grid()
 
     def switch_view(self):
-        if self.view_mode == 'placement':
-            self.view_mode = 'ships'
-        elif self.view_mode == 'ships':
-            self.view_mode = 'attacks'
+        self.view_mode = 'attacks' if self.view_mode == 'ships' else 'ships'
         self.draw_grid()
 
     def confirm_placement(self):
@@ -158,7 +164,7 @@ class BattleshipApp:
             return
 
         if self.serial_comm is None:
-            messagebox.showerror("Error", "Please connect to a serial device before confirming.")
+            messagebox.showerror("Error", "Please connect to a serial device before continuing.")
             return
 
         positions = self.game.get_boat_positions(self.current_player)
@@ -179,15 +185,6 @@ class BattleshipApp:
             self.current_player = 'player1'
             self.draw_grid()
 
-    def receive_serial_attack(self):
-        response = self.serial_comm.receive()
-        if response and response.startswith("attack:"):
-            row, col = map(int, response.split(":", 1)[1].split(","))
-            hit = self.game.attack('player2', row, col)
-            self.serial_comm.send(f"result:{'hit' if hit else 'miss'}")
-            self.info_label.config(text=f"Opponent attacked ({row}, {col}) and it was a {'hit' if hit else 'miss'}.")
-            self.draw_grid()
-
     def update_scoreboard(self):
         if self.raspberry_pi_ip is None:
             messagebox.showerror("Error", "Please connect to a Raspberry Pi server before updating the scoreboard.")
@@ -197,7 +194,6 @@ class BattleshipApp:
         player1_misses = sum(row.count('O') for row in self.game.get_attacks('player1'))
         player2_hits = sum(row.count('X') for row in self.game.get_attacks('player2'))
         player2_misses = sum(row.count('O') for row in self.game.get_attacks('player2'))
-
         url = f"http://{self.raspberry_pi_ip}:8000/update_scoreboard"
         params = {
             "player1_hits": player1_hits,
@@ -205,6 +201,7 @@ class BattleshipApp:
             "player2_hits": player2_hits,
             "player2_misses": player2_misses
         }
+
         try:
             response = requests.get(url, params=params)
             response.raise_for_status()
@@ -265,8 +262,3 @@ class BattleshipApp:
             activebackground='lightblue'
         )
         return button
-    
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = BattleshipApp(root)
-    root.mainloop()
