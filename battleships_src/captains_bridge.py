@@ -1,9 +1,9 @@
-import random
-import requests
 import tkinter as tk
 from tkinter import messagebox
 from tkinter import ttk
 from tkinter.ttk import Combobox
+import random
+import requests
 
 from telegraph import BAUDRATES, SerialCommunicator
 from utils import locate_ports
@@ -145,6 +145,11 @@ class BattleshipApp:
         if self.boats_to_place > 0:
             messagebox.showerror("Error", "You must place all boats before confirming.")
             return
+
+        if self.serial_comm is None:
+            messagebox.showerror("Error", "Please connect to a serial device before confirming.")
+            return
+
         positions = self.game.get_boat_positions(self.current_player)
         if self.current_player == 'player1':
             self.serial_comm.send(f"positions:{positions}")
@@ -173,56 +178,6 @@ class BattleshipApp:
             self.draw_grid()
 
     def update_scoreboard(self):
-        # Placeholder for scoreboard update logic
-        messagebox.showinfo("Scoreboard", "Scoreboard updated!")
-
-    def select_opponent(self):
-        self.opponent_type = self.opponent_combobox.get()
-        if self.opponent_type == 'serial':
-            self.connect_serial()
-
-    def connect_serial(self):
-        port = self.serial_devices_combobox.get()
-        baudrate = self.baudrate_combobox.get()
-        self.serial_comm = SerialCommunicator(port, baudrate)
-        messagebox.showinfo("Serial Connection", "Connected to serial device.")
-
-    def _init_serial_devices_combobox(self) -> Combobox:  
-        ports = locate_ports() 
-        return Combobox(self.root, values=ports)
-    
-    def create_baudrate_combobox(self) -> Combobox:
-        return Combobox(
-            self.root, 
-            values=BAUDRATES
-        )
-    
-    def create_serial_devices_refresh_button(self) -> tk.Button:
-        button = tk.Button(
-            self.root, 
-            text='Refresh', 
-            command=self.refresh_serial_devices,
-            bg='lightblue',
-            activebackground='lightblue'
-        )
-        return button
-    
-    def refresh_serial_devices(self) -> None:
-        ports = locate_ports()
-        self.serial_devices_combobox.selection_clear()
-        self.serial_devices_combobox['values'] = ports
-        
-    def create_connect_serial_button(self) -> tk.Button:
-        button = tk.Button(
-            self.root,
-            text='Connect',
-            command=self.connect_serial,
-            bg='lightblue',
-            activebackground='lightblue'
-        )
-        return button
-    
-    def update_scoreboard(self):
         player1_hits = sum(row.count('X') for row in self.game.get_attacks('player1'))
         player1_misses = sum(row.count('O') for row in self.game.get_attacks('player1'))
         player2_hits = sum(row.count('X') for row in self.game.get_attacks('player2'))
@@ -241,8 +196,53 @@ class BattleshipApp:
             messagebox.showinfo("Scoreboard", "Scoreboard updated!")
         else:
             messagebox.showerror("Error", "Failed to update scoreboard")
-    
 
+    def select_opponent(self):
+        self.opponent_type = self.opponent_combobox.get()
+        if self.opponent_type == 'serial':
+            self.connect_serial()
+
+    def connect_serial(self):
+        port = self.serial_devices_combobox.get()
+        baudrate = self.baudrate_combobox.get()
+        self.serial_comm = SerialCommunicator(port, baudrate)
+        messagebox.showinfo("Serial Connection", "Connected to serial device.")
+    
+    def _init_serial_devices_combobox(self) -> Combobox:  
+        ports = locate_ports() 
+        return Combobox(self.root, values=ports)
+
+    def create_baudrate_combobox(self) -> Combobox:
+        return Combobox(
+            self.root, 
+            values=BAUDRATES
+        )
+
+    def create_serial_devices_refresh_button(self) -> tk.Button:
+        button = tk.Button(
+            self.root, 
+            text='Refresh', 
+            command=self.refresh_serial_devices,
+            bg='lightblue',
+            activebackground='lightblue'
+        )
+        return button
+
+    def refresh_serial_devices(self) -> None:
+        ports = locate_ports()
+        self.serial_devices_combobox.selection_clear()
+        self.serial_devices_combobox['values'] = ports
+        
+    def create_connect_serial_button(self) -> tk.Button:
+        button = tk.Button(
+            self.root,
+            text='Connect',
+            command=self.connect_serial,
+            bg='lightblue',
+            activebackground='lightblue'
+        )
+        return button
+    
 if __name__ == "__main__":
     root = tk.Tk()
     app = BattleshipApp(root)
