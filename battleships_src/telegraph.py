@@ -1,6 +1,7 @@
 import serial
 import time
 
+
 BAUDRATES = [
     2400,
     4800, 
@@ -17,7 +18,7 @@ class SerialCommunicator:
         time.sleep(2)  # wait for the serial connection to initialize
 
     def send(self, message):
-        self.ser.write(message.encode())
+        self.ser.write((message + '\n').encode())
 
     def receive(self):
         if self.ser.in_waiting > 0:
