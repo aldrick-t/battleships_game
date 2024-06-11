@@ -17,6 +17,7 @@ class BattleshipApp:
         self.view_mode = 'placement'  # placement, ships, or attacks
         self.current_player = 'player1'
         self.serial_comm = None
+        self.raspberry_pi_ip = None
         self.boats_to_place = 5
 
         self.setup_ui()
@@ -65,6 +66,16 @@ class BattleshipApp:
         
         self.connect_serial_button = self.create_connect_serial_button()
         self.connect_serial_button.grid(row=4, column=3, padx=5, pady=5)
+
+        # IP Address Input and Connection
+        self.ip_label = tk.Label(self.root, text="Enter IP Address:")
+        self.ip_label.grid(row=6, column=0, padx=5, pady=5)
+
+        self.ip_entry = tk.Entry(self.root)
+        self.ip_entry.grid(row=6, column=1, padx=5, pady=5)
+
+        self.connect_ip_button = tk.Button(self.root, text="Connect", command=self.connect_ip)
+        self.connect_ip_button.grid(row=6, column=2, padx=5, pady=5)
 
         self.draw_grid()
 
@@ -178,24 +189,28 @@ class BattleshipApp:
             self.draw_grid()
 
     def update_scoreboard(self):
+        if self.raspberry_pi_ip is None:
+            messagebox.showerror("Error", "Please connect to a Raspberry Pi server before updating the scoreboard.")
+            return
+
         player1_hits = sum(row.count('X') for row in self.game.get_attacks('player1'))
         player1_misses = sum(row.count('O') for row in self.game.get_attacks('player1'))
         player2_hits = sum(row.count('X') for row in self.game.get_attacks('player2'))
         player2_misses = sum(row.count('O') for row in self.game.get_attacks('player2'))
 
-        url = "http://<raspberry_pi_ip>:8000/update_scoreboard"  # Replace <raspberry_pi_ip> with the actual IP address
+        url = f"http://{self.raspberry_pi_ip}:8000/update_scoreboard"
         params = {
             "player1_hits": player1_hits,
             "player1_misses": player1_misses,
             "player2_hits": player2_hits,
             "player2_misses": player2_misses
         }
-
-        response = requests.get(url, params=params)
-        if response.status_code == 200:
+        try:
+            response = requests.get(url, params=params)
+            response.raise_for_status()
             messagebox.showinfo("Scoreboard", "Scoreboard updated!")
-        else:
-            messagebox.showerror("Error", "Failed to update scoreboard")
+        except requests.exceptions.RequestException as e:
+            messagebox.showerror("Error", f"Failed to update scoreboard: {e}")
 
     def select_opponent(self):
         self.opponent_type = self.opponent_combobox.get()
@@ -207,7 +222,15 @@ class BattleshipApp:
         baudrate = self.baudrate_combobox.get()
         self.serial_comm = SerialCommunicator(port, baudrate)
         messagebox.showinfo("Serial Connection", "Connected to serial device.")
-    
+
+    def connect_ip(self):
+        ip_address = self.ip_entry.get()
+        if not ip_address:
+            messagebox.showerror("Error", "Please enter an IP address.")
+            return
+        self.raspberry_pi_ip = ip_address
+        messagebox.showinfo("IP Connection", f"Connected to Raspberry Pi at {self.raspberry_pi_ip}")
+
     def _init_serial_devices_combobox(self) -> Combobox:  
         ports = locate_ports() 
         return Combobox(self.root, values=ports)
