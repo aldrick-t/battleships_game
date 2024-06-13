@@ -219,7 +219,6 @@ class BattleshipApp:
 
         if self.current_player == 'player1':
             self.serial_comm.send(f"positions:{positions_str}")
-            self.info_label.config(text="Waiting for opponent to confirm...")
             self.wait_for_opponent_confirmation()
         else:
             self.serial_comm.send(f"ready:{positions_str}")
@@ -341,6 +340,26 @@ class BattleshipApp:
         )
         return button
     
+    def wait_for_opponent_confirmation(self):
+        self.info_label.config(text="Waiting for opponent to confirm...")
+        self.root.after(1000, self.check_for_opponent_confirmation)
+
+    def check_for_opponent_confirmation(self):
+        if self.serial_comm:
+            response = self.serial_comm.receive()
+            if response and response.startswith("positions:"):
+                opponent_positions = eval(response.split(":", 1)[1])
+                self.game.set_boat_positions('player2', opponent_positions)
+                self.info_label.config(text="Opponent positions received. Waiting for opponent to confirm...")
+                self.root.after(1000, self.check_for_opponent_confirmation)  # Continue checking for "ready" message
+            elif response == "ready":
+                self.info_label.config(text="Opponent confirmed. Game start!")
+                self.view_mode = 'attacks'
+                self.current_player = 'player1'
+                self.draw_grid()
+            else:
+                self.root.after(1000, self.check_for_opponent_confirmation)
+        
 if __name__ == "__main__":
     root = tk.Tk()
     app = BattleshipApp(root)
