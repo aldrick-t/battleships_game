@@ -15,6 +15,7 @@ MD_MAX72XX mx = MD_MAX72XX(MD_MAX72XX::FC16_HW, CS_PIN, MAX_DEVICES);
 #define BTN_UP 4
 #define BTN_DOWN 5
 #define BTN_ENTER 7
+#define BTN_VIEW 8
 
 // Variables de juego
 int tablerob[10][2];
@@ -30,6 +31,7 @@ unsigned long lastDebounceTime[5] = {0};
 unsigned long debounceDelay = 50; 
 bool gameStarted = false; // Variable para controlar si el juego ha comenzado o no
 bool shipsPlaced = false; // Variable para controlar si los barcos han sido colocados
+bool viewMode = false; // Variable para controlar si se está en modo de visualización
 
 // Function declarations
 void placeShips();
@@ -61,6 +63,36 @@ bool readButton(int buttonPin, int buttonIndex) {
   return false;
 }
 
+void displayShipView() {
+  mx.clear();
+  for (int i = 0; i < 5; i++) {
+    if (tablerob[i][0] != -1) {
+      mx.setPoint(tablerob[i][1], tablerob[i][0], true);
+      mx.setPoint(tablerob[i][1], tablerob[i][0] + 1, true);
+    }
+  }
+}
+
+void displayAttackView() {
+  mx.clear();
+  for (int i = 0; i < 10; i++) {
+    if (tableroataqueaa[i][0] != -1) {
+      mx.setPoint(tableroataqueaa[i][1], tableroataqueaa[i][0], true);
+    }
+  }
+}
+
+void switchView() {
+  viewMode = !viewMode;
+  if (viewMode) {
+    // Display the attack view
+    displayAttackView();
+  } else {
+    // Display the ship view
+    displayShipView();
+  }
+}
+
 void setup() {
   // Inicializar la matriz
   mx.begin();
@@ -73,6 +105,7 @@ void setup() {
   pinMode(BTN_UP, INPUT_PULLUP);
   pinMode(BTN_DOWN, INPUT_PULLUP);
   pinMode(BTN_ENTER, INPUT_PULLUP);
+  pinMode(BTN_VIEW, INPUT_PULLUP);
 
   // Inicializar la comunicación serie
   Serial.begin(9600);
@@ -86,6 +119,10 @@ void setup() {
 }
 
 void loop() {
+  if (readButton(BTN_VIEW, 5)) { // Assuming the view button is the 6th button
+    switchView();
+  }
+
   if (!gameStarted) { // Si el juego no ha comenzado
     placeShips(); // Ubica los barcos
     gameStarted = true; // Cambia el estado para indicar que el juego ha comenzado
@@ -156,7 +193,9 @@ void displayCursorSHIPS(int x, int y) {
   mx.setPoint(y, x + 1, true);  // Set the second part of the ship
 }
 
-  void receiveShipCoordinates() {
+
+
+void receiveShipCoordinates() {
   if (Serial.available()) {
     String data = Serial.readStringUntil('\n');
     int index = 0;
@@ -177,6 +216,7 @@ void receiveAttack() {
   if (Serial.available()) {
     String data = Serial.readStringUntil('\n');
     int commaIndex = data.indexOf(',');
+
     if (commaIndex != -1) {
       ataquea[0] = data.substring(0, commaIndex).toInt();
       ataquea[1] = data.substring(commaIndex + 1).toInt();
@@ -191,17 +231,16 @@ void receiveAttack() {
         }
       }
 
+      // Flash LED at attacked coordinate
+      for (int i = 0; i < 5; i++) {
+        mx.setPoint(ataquea[1], ataquea[0], i % 2 == 0);
+        delay(100);
+      }
+      mx.setPoint(ataquea[1], ataquea[0], false);  // Turn off LED after flashing
+
       if (hit) {
-        for (int i = 0; i < 5; i++) {
-          mx.setPoint(tablerob[hitIndex][1], tablerob[hitIndex][0], i % 2 == 0);
-          delay(100);
-        }
         Serial.println("hit");
       } else {
-        for (int i = 0; i < 5; i++) {
-          mx.setPoint(ataquea[0], ataquea[1], i % 2 == 0);
-          delay(300);
-        }
         Serial.println("miss");
       }
 
