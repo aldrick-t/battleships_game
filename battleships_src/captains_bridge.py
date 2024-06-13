@@ -371,8 +371,14 @@ class BattleshipApp:
                 hit = self.game.attack('player1', row, col)
                 self.info_label.config(text=f"Opponent attacked ({row}, {col}) and it was a {'hit' if hit else 'miss'}.")
                 self.draw_grid()
+                self.root.after(2000, self.prompt_player_attack)
             else:
                 self.root.after(1000, self.check_for_opponent_attack)
+
+    def prompt_player_attack(self):
+        self.info_label.config(text="Your turn to attack.")
+        self.current_player = 'player1'
+        self.draw_grid()
         
 if __name__ == "__main__":
     root = tk.Tk()
