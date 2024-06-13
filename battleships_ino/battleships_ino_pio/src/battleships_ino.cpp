@@ -93,6 +93,34 @@ void switchView() {
   }
 }
 
+void moveCursorForAttack() {
+  if (readButton(BTN_RIGHT, 0)) {
+    if (x < 7) { x++; }
+  }
+  if (readButton(BTN_LEFT, 1)) {
+    if (x > 0) { x--; }
+  }
+  if (readButton(BTN_UP, 2)) {
+    if (y > 0) { y--; }
+  }
+  if (readButton(BTN_DOWN, 3)) {
+    if (y < 7) { y++; }
+  }
+  if (readButton(BTN_ENTER, 4)) {
+    // Send attack coordinates to Raspberry Pi
+    Serial.print("attack:");
+    Serial.print(x);
+    Serial.print(",");
+    Serial.println(y);
+    // Flash LED at attacked coordinate
+    for (int i = 0; i < 5; i++) {
+      mx.setPoint(y, x, i % 2 == 0);
+      delay(200);
+    }
+    mx.setPoint(y, x, false);  // Turn off LED after flashing
+  }
+}
+
 void setup() {
   // Inicializar la matriz
   mx.begin();
@@ -130,7 +158,11 @@ void loop() {
     if (!shipsPlaced) { // Si los barcos no han sido colocados
       placeShips(); // Continuar ubicando los barcos
     } else {
-      receiveAttack(); // Recibir ataques
+      if (viewMode) { // Attack mode
+        moveCursorForAttack();
+      } else {
+        receiveAttack(); // Recibir ataques
+      }
     }
   }
 }
@@ -194,7 +226,6 @@ void displayCursorSHIPS(int x, int y) {
 }
 
 
-
 void receiveShipCoordinates() {
   if (Serial.available()) {
     String data = Serial.readStringUntil('\n');
@@ -253,6 +284,10 @@ void receiveAttack() {
           break;
         }
       }
+
+      // Switch to attack mode after a delay
+      delay(2000);
+      switchView();
     }
   }
 }
