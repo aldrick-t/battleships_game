@@ -28,6 +28,7 @@ class BattleshipApp:
         self.serial_comm = None
         self.raspberry_pi_ip = None
         self.boats_to_place = 5
+        self.last_opponent_attack = None
 
         self.setup_ui()
 
@@ -52,7 +53,6 @@ class BattleshipApp:
         self.update_scoreboard_button = tk.Button(self.root, text="Update Scoreboard", command=self.update_scoreboard)
         self.update_scoreboard_button.grid(row=2, column=2, padx=5, pady=5)
 
-        # Add this line to add the Place/Attack button
         self.place_attack_button = tk.Button(self.root, text="Place Boat", command=self.place_or_attack)
         self.place_attack_button.grid(row=2, column=3, padx=5, pady=5)
 
@@ -149,11 +149,11 @@ class BattleshipApp:
         self.move_cursor(0, 1)
 
     def select_position(self, event=None):
-        if self.view_mode == "placement":
-             self.place_boat()
-        elif self.view_mode == "attacks":
+        if self.view_mode == 'placement':
+            self.place_boat()
+        elif self.view_mode == 'attacks':
             self.attack()
-            
+
     def place_boat(self):
         row, col = self.cursor_position
         if self.boats_to_place > 0:
@@ -176,12 +176,12 @@ class BattleshipApp:
         if self.current_player == 'player1':
             if self.game.attack(self.current_player, row, col):
                 self.info_label.config(text=f"Hit at ({row}, {col})!")
+                self.serial_comm.send(f"hit:{row},{col}")
             else:
                 self.info_label.config(text=f"Miss at ({row}, {col}).")
-            self.send_attack(row, col)
-            self.game.switch_turn()
-            self.current_player = self.game.get_current_player()
+                self.serial_comm.send(f"miss:{row},{col}")
             self.draw_grid()
+            self.root.after(2000, self.wait_for_opponent_attack)
         else:
             self.receive_attack()
 
@@ -218,7 +218,7 @@ class BattleshipApp:
         else:
             self.serial_comm.send(f"ready:{positions_str}")
             self.receive_serial_positions()
-
+    
     def wait_for_opponent_confirmation(self):
         self.info_label.config(text="Waiting for opponent to confirm...")
         self.root.after(1000, self.check_for_opponent_confirmation)
@@ -253,7 +253,9 @@ class BattleshipApp:
             if response and response.startswith("attack:"):
                 row, col = map(int, response.split(":", 1)[1].split(","))
                 hit = self.game.attack('player1', row, col)
+                self.last_opponent_attack = (row, col)
                 self.info_label.config(text=f"Opponent attacked ({row}, {col}) and it was a {'hit' if hit else 'miss'}.")
+                self.view_mode = 'ships'
                 self.draw_grid()
                 self.root.after(2000, self.prompt_player_attack)
             else:
@@ -262,6 +264,7 @@ class BattleshipApp:
     def prompt_player_attack(self):
         self.info_label.config(text="Your turn to attack.")
         self.current_player = 'player1'
+        self.view_mode = 'attacks'
         self.draw_grid()
 
     def update_scoreboard(self):
@@ -352,3 +355,4 @@ if __name__ == "__main__":
     root = tk.Tk()
     app = BattleshipApp(root)
     root.mainloop()
+    
