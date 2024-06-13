@@ -29,6 +29,7 @@ class BattleshipApp:
         self.raspberry_pi_ip = None
         self.boats_to_place = 5
         self.last_opponent_attack = None
+        self.opponent_turn = False
 
         self.setup_ui()
 
@@ -131,10 +132,11 @@ class BattleshipApp:
                     button.config(bg='lightgray')
 
     def move_cursor(self, row_delta, col_delta):
-        new_row = (self.cursor_position[0] + row_delta) % 8
-        new_col = (self.cursor_position[1] + col_delta) % 8
-        self.cursor_position = [new_row, new_col]
-        self.draw_grid()
+        if not self.opponent_turn:
+            new_row = (self.cursor_position[0] + row_delta) % 8
+            new_col = (self.cursor_position[1] + col_delta) % 8
+            self.cursor_position = [new_row, new_col]
+            self.draw_grid()
 
     def move_up(self, event):
         self.move_cursor(-1, 0)
@@ -149,10 +151,11 @@ class BattleshipApp:
         self.move_cursor(0, 1)
 
     def select_position(self, event=None):
-        if self.view_mode == 'placement':
-            self.place_boat()
-        elif self.view_mode == 'attacks':
-            self.attack()
+        if not self.opponent_turn:
+            if self.view_mode == 'placement':
+                self.place_boat()
+            elif self.view_mode == 'attacks':
+                self.attack()
 
     def place_boat(self):
         row, col = self.cursor_position
@@ -181,15 +184,17 @@ class BattleshipApp:
                 self.info_label.config(text=f"Miss at ({row}, {col}).")
                 self.serial_comm.send(f"miss:{row},{col}")
             self.draw_grid()
+            self.opponent_turn = True
             self.root.after(2000, self.wait_for_opponent_attack)
         else:
             self.receive_attack()
 
     def place_or_attack(self):
-        if self.view_mode == 'placement':
-            self.place_boat()
-        elif self.view_mode == 'attacks':
-            self.attack()
+        if not self.opponent_turn:
+            if self.view_mode == 'placement':
+                self.place_boat()
+            elif self.view_mode == 'attacks':
+                self.attack()
 
     def switch_view(self):
         if self.view_mode == 'placement':
@@ -207,8 +212,7 @@ class BattleshipApp:
 
         if self.serial_comm is None:
             messagebox.showerror("Error", "Please connect to a serial device before confirming.")
-            return
-
+            return 
         positions = self.game.get_boat_positions(self.current_player)
         positions_str = ' '.join([f"{x},{y}" for x, y in positions])
 
@@ -218,7 +222,7 @@ class BattleshipApp:
         else:
             self.serial_comm.send(f"ready:{positions_str}")
             self.receive_serial_positions()
-    
+
     def wait_for_opponent_confirmation(self):
         self.info_label.config(text="Waiting for opponent to confirm...")
         self.root.after(1000, self.check_for_opponent_confirmation)
@@ -255,6 +259,7 @@ class BattleshipApp:
                 hit = self.game.attack('player1', row, col)
                 self.last_opponent_attack = (row, col)
                 self.info_label.config(text=f"Opponent attacked ({row}, {col}) and it was a {'hit' if hit else 'miss'}.")
+                self.opponent_turn = False
                 self.view_mode = 'ships'
                 self.draw_grid()
                 self.root.after(2000, self.prompt_player_attack)
@@ -271,7 +276,6 @@ class BattleshipApp:
         if self.raspberry_pi_ip is None:
             messagebox.showerror("Error", "Please connect to a Raspberry Pi server before updating the scoreboard.")
             return
-
         player1_hits = sum(row.count('X') for row in self.game.get_attacks('player1'))
         player1_misses = sum(row.count('O') for row in self.game.get_attacks('player1'))
         player2_hits = sum(row.count('X') for row in self.game.get_attacks('player2'))
@@ -350,9 +354,8 @@ class BattleshipApp:
     def create_connect_serial_button(self):
         button = tk.Button(self.root, text='Connect', command=self.connect_serial, bg='lightblue', activebackground='lightblue')
         return button
-    
+        
 if __name__ == "__main__":
     root = tk.Tk()
     app = BattleshipApp(root)
     root.mainloop()
-    
