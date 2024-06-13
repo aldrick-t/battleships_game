@@ -13,7 +13,6 @@ from tkinter import ttk
 from tkinter.ttk import Combobox
 import random
 import requests
-import socket 
 
 from telegraph import BAUDRATES, SerialCommunicator
 from utils import locate_ports
@@ -31,12 +30,6 @@ class BattleshipApp:
         self.boats_to_place = 5
 
         self.setup_ui()
-        
-    def get_local_ip(self):
-        hostname = socket.gethostname()
-        local_ip = socket.gethostbyname(hostname)
-        self.ip_entry.delete(0, tk.END)
-        self.ip_entry.insert(0, local_ip)
 
     def setup_ui(self):
         self.root.title("Battleship Game")
@@ -53,7 +46,7 @@ class BattleshipApp:
         self.confirm_button = tk.Button(self.root, text="Confirm Placement", command=self.confirm_placement)
         self.confirm_button.grid(row=2, column=1, padx=5, pady=5)
 
-        self.switch_button = tk.Button(self.root, text="Switch View", command=self.switch_view)
+        self.switch_button = tk.Button(self.root, text="Switch to Attack View", command=self.switch_view)
         self.switch_button.grid(row=2, column=0, padx=5, pady=5)
 
         self.update_scoreboard_button = tk.Button(self.root, text="Update Scoreboard", command=self.update_scoreboard)
@@ -96,14 +89,14 @@ class BattleshipApp:
         self.ip_label.grid(row=6, column=0, padx=5, pady=5)
 
         self.ip_entry = tk.Entry(self.root)
-        self.ip_entry.grid(row=6, column=2, padx=5, pady=5)
+        self.ip_entry.grid(row=6, column=1, padx=5, pady=5)
 
         self.connect_ip_button = tk.Button(self.root, text="Connect", command=self.connect_ip)
-        self.connect_ip_button.grid(row=6, column=3, padx=5, pady=5)
+        self.connect_ip_button.grid(row=6, column=2, padx=5, pady=5)
         self.connect_ip_button.configure(bg="red")
 
         self.get_local_ip_button = tk.Button(self.root, text="Get Local", command=self.get_local_ip)
-        self.get_local_ip_button.grid(row=6, column=1, padx=5, pady=5)
+        self.get_local_ip_button.grid(row=6, column=3, padx=5, pady=5)
 
         self.update_scoreboard_button.configure(bg="white")
         self.switch_button.configure(bg="white")
@@ -142,7 +135,7 @@ class BattleshipApp:
         new_col = (self.cursor_position[1] + col_delta) % 8
         self.cursor_position = [new_row, new_col]
         self.draw_grid()
-        
+
     def move_up(self, event):
         self.move_cursor(-1, 0)
 
@@ -156,11 +149,11 @@ class BattleshipApp:
         self.move_cursor(0, 1)
 
     def select_position(self, event=None):
-        if self.view_mode == 'placement':
-            self.place_boat()
-        elif self.view_mode == 'attacks':
+        if self.view_mode == "placement":
+             self.place_boat()
+        elif self.view_mode == "attacks":
             self.attack()
-
+            
     def place_boat(self):
         row, col = self.cursor_position
         if self.boats_to_place > 0:
@@ -203,6 +196,8 @@ class BattleshipApp:
             messagebox.showerror("Error", "You must confirm boat placements before switching views.")
             return
         self.view_mode = 'attacks' if self.view_mode == 'ships' else 'ships'
+        self.switch_button.config(text="Switch to Ship View" if self.view_mode == 'attacks' else "Switch to Attack View")
+        self.switch_button.config(bg="lightgreen" if self.view_mode == 'attacks' else "lightblue")
         self.draw_grid()
 
     def confirm_placement(self):
@@ -224,28 +219,50 @@ class BattleshipApp:
             self.serial_comm.send(f"ready:{positions_str}")
             self.receive_serial_positions()
 
-    def receive_serial_positions(self):
-        response = self.serial_comm.receive()
-        if response and response.startswith("positions:"):
-            opponent_positions = eval(response.split(":", 1)[1])
-            self.game.set_boat_positions('player2', opponent_positions)
-            self.info_label.config(text="Opponent positions received. Game start!")
-            self.view_mode = 'attacks'
-            self.current_player = 'player1'
-            self.draw_grid()
+    def wait_for_opponent_confirmation(self):
+        self.info_label.config(text="Waiting for opponent to confirm...")
+        self.root.after(1000, self.check_for_opponent_confirmation)
+
+    def check_for_opponent_confirmation(self):
+        if self.serial_comm:
+            response = self.serial_comm.receive()
+            if response and response.startswith("positions:"):
+                opponent_positions = eval(response.split(":", 1)[1])
+                self.game.set_boat_positions('player2', opponent_positions)
+                self.info_label.config(text="Opponent positions received. Waiting for opponent to confirm...")
+                self.root.after(1000, self.check_for_opponent_confirmation)  # Continue checking for "ready" message
+            elif response == "ready":
+                self.info_label.config(text="Opponent confirmed. Game start!")
+                self.view_mode = 'attacks'
+                self.current_player = 'player1'
+                self.draw_grid()
+            else:
+                self.root.after(1000, self.check_for_opponent_confirmation)
 
     def send_attack(self, row, col):
         self.serial_comm.send(f"attack:{row},{col}")
         self.wait_for_opponent_attack()
 
-    def receive_attack(self):
-        response = self.serial_comm.receive()
-        if response and response.startswith("attack:"):
-            row, col = map(int, response.split(":", 1)[1].split(","))
-            hit = self.game.attack('player2', row, col)
-            self.serial_comm.send(f"result:{'hit' if hit else 'miss'}")
-            self.info_label.config(text=f"Opponent attacked ({row}, {col}) and it was a {'hit' if hit else 'miss'}.")
-            self.draw_grid()
+    def wait_for_opponent_attack(self):
+        self.info_label.config(text="Waiting for opponent's attack...")
+        self.root.after(1000, self.check_for_opponent_attack)
+
+    def check_for_opponent_attack(self):
+        if self.serial_comm:
+            response = self.serial_comm.receive()
+            if response and response.startswith("attack:"):
+                row, col = map(int, response.split(":", 1)[1].split(","))
+                hit = self.game.attack('player1', row, col)
+                self.info_label.config(text=f"Opponent attacked ({row}, {col}) and it was a {'hit' if hit else 'miss'}.")
+                self.draw_grid()
+                self.root.after(2000, self.prompt_player_attack)
+            else:
+                self.root.after(1000, self.check_for_opponent_attack)
+
+    def prompt_player_attack(self):
+        self.info_label.config(text="Your turn to attack.")
+        self.current_player = 'player1'
+        self.draw_grid()
 
     def update_scoreboard(self):
         if self.raspberry_pi_ip is None:
@@ -304,82 +321,33 @@ class BattleshipApp:
             self.connect_ip_button.configure(text="Connect", bg="red")
             messagebox.showinfo("IP Connection", "Disconnected from Raspberry Pi")
 
-    def _init_serial_devices_combobox(self) -> Combobox:  
-        ports = locate_ports() 
+    def get_local_ip(self):
+        import socket
+        hostname = socket.gethostname()
+        local_ip = socket.gethostbyname(hostname)
+        self.ip_entry.delete(0, tk.END)
+        self.ip_entry.insert(0, local_ip)
+
+    def _init_serial_devices_combobox(self):
+        ports = locate_ports()
         return Combobox(self.root, values=ports)
 
-    def create_baudrate_combobox(self) -> Combobox:
-        return Combobox(
-            self.root, 
-            values=BAUDRATES
-        )
+    def create_baudrate_combobox(self):
+        return Combobox(self.root, values=BAUDRATES)
 
-    def create_serial_devices_refresh_button(self) -> tk.Button:
-        button = tk.Button(
-            self.root, 
-            text='Refresh', 
-            command=self.refresh_serial_devices,
-            bg='lightblue',
-            activebackground='lightblue'
-        )
+    def create_serial_devices_refresh_button(self):
+        button = tk.Button(self.root, text='Refresh', command=self.refresh_serial_devices, bg='lightblue', activebackground='lightblue')
         return button
 
-    def refresh_serial_devices(self) -> None:
+    def refresh_serial_devices(self):
         ports = locate_ports()
         self.serial_devices_combobox.selection_clear()
         self.serial_devices_combobox['values'] = ports
-        
-    def create_connect_serial_button(self) -> tk.Button:
-        button = tk.Button(
-            self.root,
-            text='Connect',
-            command=self.connect_serial,
-            bg='lightblue',
-            activebackground='lightblue'
-        )
+
+    def create_connect_serial_button(self):
+        button = tk.Button(self.root, text='Connect', command=self.connect_serial, bg='lightblue', activebackground='lightblue')
         return button
     
-    def wait_for_opponent_confirmation(self):
-        self.info_label.config(text="Waiting for opponent to confirm...")
-        self.root.after(1000, self.check_for_opponent_confirmation)
-
-    def check_for_opponent_confirmation(self):
-        if self.serial_comm:
-            response = self.serial_comm.receive()
-            if response and response.startswith("positions:"):
-                opponent_positions = eval(response.split(":", 1)[1])
-                self.game.set_boat_positions('player2', opponent_positions)
-                self.info_label.config(text="Opponent positions received. Waiting for opponent to confirm...")
-                self.root.after(1000, self.check_for_opponent_confirmation)  # Continue checking for "ready" message
-            elif response == "ready":
-                self.info_label.config(text="Opponent confirmed. Game start!")
-                self.view_mode = 'attacks'
-                self.current_player = 'player1'
-                self.draw_grid()
-            else:
-                self.root.after(1000, self.check_for_opponent_confirmation)
-                
-    def wait_for_opponent_attack(self):
-        self.info_label.config(text="Waiting for opponent's attack...")
-        self.root.after(1000, self.check_for_opponent_attack)
-
-    def check_for_opponent_attack(self):
-        if self.serial_comm:
-            response = self.serial_comm.receive()
-            if response and response.startswith("attack:"):
-                row, col = map(int, response.split(":", 1)[1].split(","))
-                hit = self.game.attack('player1', row, col)
-                self.info_label.config(text=f"Opponent attacked ({row}, {col}) and it was a {'hit' if hit else 'miss'}.")
-                self.draw_grid()
-                self.root.after(2000, self.prompt_player_attack)
-            else:
-                self.root.after(1000, self.check_for_opponent_attack)
-
-    def prompt_player_attack(self):
-        self.info_label.config(text="Your turn to attack.")
-        self.current_player = 'player1'
-        self.draw_grid()
-        
 if __name__ == "__main__":
     root = tk.Tk()
     app = BattleshipApp(root)
