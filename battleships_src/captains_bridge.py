@@ -236,7 +236,6 @@ class BattleshipApp:
 
     def send_attack(self, row, col):
         self.serial_comm.send(f"attack:{row},{col}")
-        self.info_label.config(text="Waiting for opponent's attack...")
         self.wait_for_opponent_attack()
 
     def receive_attack(self):
@@ -359,6 +358,21 @@ class BattleshipApp:
                 self.draw_grid()
             else:
                 self.root.after(1000, self.check_for_opponent_confirmation)
+                
+    def wait_for_opponent_attack(self):
+        self.info_label.config(text="Waiting for opponent's attack...")
+        self.root.after(1000, self.check_for_opponent_attack)
+
+    def check_for_opponent_attack(self):
+        if self.serial_comm:
+            response = self.serial_comm.receive()
+            if response and response.startswith("attack:"):
+                row, col = map(int, response.split(":", 1)[1].split(","))
+                hit = self.game.attack('player1', row, col)
+                self.info_label.config(text=f"Opponent attacked ({row}, {col}) and it was a {'hit' if hit else 'miss'}.")
+                self.draw_grid()
+            else:
+                self.root.after(1000, self.check_for_opponent_attack)
         
 if __name__ == "__main__":
     root = tk.Tk()
