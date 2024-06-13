@@ -1,9 +1,19 @@
+# 
+#   Battleships Game: Main app.
+#   A simple Battleships game with a GUI interface.
+#   Base to be run on a Linux server distro. like Raspberry Pi.
+#   Main Python App file, portable with required utility files to multiple OS's running python3.
+#   By: aldrick-t (github.com/aldrick-t)
+#   Version: June 2024 (v0.1.1) python3.11.2
+#   
+
 import tkinter as tk
 from tkinter import messagebox
 from tkinter import ttk
 from tkinter.ttk import Combobox
 import random
 import requests
+import socket 
 
 from telegraph import BAUDRATES, SerialCommunicator
 from utils import locate_ports
@@ -14,13 +24,19 @@ class BattleshipApp:
         self.root = root
         self.game = BattleshipGame()
         self.cursor_position = [0, 0]
-        self.view_mode = 'ships'  # ships or attacks
+        self.view_mode = 'placement'  # placement, ships, or attacks
         self.current_player = 'player1'
         self.serial_comm = None
         self.raspberry_pi_ip = None
         self.boats_to_place = 5
 
         self.setup_ui()
+        
+    def get_local_ip(self):
+        hostname = socket.gethostname()
+        local_ip = socket.gethostbyname(hostname)
+        self.ip_entry.delete(0, tk.END)
+        self.ip_entry.insert(0, local_ip)
 
     def setup_ui(self):
         self.root.title("Battleship Game")
@@ -31,6 +47,9 @@ class BattleshipApp:
         self.info_label = tk.Label(self.root, text="Place your boats.")
         self.info_label.grid(row=0, column=0, columnspan=3, pady=5)
 
+        self.place_instruction_label = tk.Label(self.root, text="Press Enter to place your boats.")
+        self.place_instruction_label.grid(row=0, column=3, pady=5)
+
         self.confirm_button = tk.Button(self.root, text="Confirm Placement", command=self.confirm_placement)
         self.confirm_button.grid(row=2, column=1, padx=5, pady=5)
 
@@ -39,6 +58,10 @@ class BattleshipApp:
 
         self.update_scoreboard_button = tk.Button(self.root, text="Update Scoreboard", command=self.update_scoreboard)
         self.update_scoreboard_button.grid(row=2, column=2, padx=5, pady=5)
+
+        # Add this line to add the Place/Attack button
+        self.place_attack_button = tk.Button(self.root, text="Place Boat", command=self.place_or_attack)
+        self.place_attack_button.grid(row=2, column=3, padx=5, pady=5)
 
         self.opponent_label = tk.Label(self.root, text="Select Connection:")
         self.opponent_label.grid(row=3, column=1, padx=5, pady=5)
@@ -66,6 +89,7 @@ class BattleshipApp:
         
         self.connect_serial_button = self.create_connect_serial_button()
         self.connect_serial_button.grid(row=4, column=3, padx=5, pady=5)
+        self.connect_serial_button.configure(bg="red")
 
         # IP Address Input and Connection
         self.ip_label = tk.Label(self.root, text="Enter IP Address:")
@@ -76,6 +100,14 @@ class BattleshipApp:
 
         self.connect_ip_button = tk.Button(self.root, text="Connect", command=self.connect_ip)
         self.connect_ip_button.grid(row=6, column=3, padx=5, pady=5)
+        self.connect_ip_button.configure(bg="red")
+
+        self.get_local_ip_button = tk.Button(self.root, text="Get Local", command=self.get_local_ip)
+        self.get_local_ip_button.grid(row=6, column=1, padx=5, pady=5)
+
+        self.update_scoreboard_button.configure(bg="white")
+        self.switch_button.configure(bg="white")
+        self.confirm_button.configure(bg="white")
 
         self.draw_grid()
 
@@ -88,7 +120,7 @@ class BattleshipApp:
     def draw_grid(self):
         for row in range(8):
             for col in range(8):
-                if self.view_mode == 'ships':
+                if self.view_mode == 'placement' or self.view_mode == 'ships':
                     value = self.game.get_board(self.current_player)[row][col]
                 else:
                     value = self.game.get_attacks(self.current_player)[row][col]
@@ -100,6 +132,8 @@ class BattleshipApp:
                     button.config(bg='red')
                 elif value == 'O':
                     button.config(bg='blue')
+                elif value == 'B':  # Assume 'B' is used for boat parts
+                    button.config(bg='green')
                 else:
                     button.config(bg='lightgray')
 
@@ -108,7 +142,7 @@ class BattleshipApp:
         new_col = (self.cursor_position[1] + col_delta) % 8
         self.cursor_position = [new_row, new_col]
         self.draw_grid()
-
+        
     def move_up(self, event):
         self.move_cursor(-1, 0)
 
@@ -121,40 +155,53 @@ class BattleshipApp:
     def move_right(self, event):
         self.move_cursor(0, 1)
 
-    def select_position(self, event):
-        row, col = self.cursor_position
+    def select_position(self, event=None):
         if self.view_mode == 'placement':
-            if self.boats_to_place > 0:
-                size = 2
-                orientation = random.choice(['H', 'V'])
-                if self.game.place_boat(self.current_player, row, col, size, orientation):
-                    self.boats_to_place -= 1
-                    self.draw_grid()
-                else:
-                    messagebox.showerror("Error", "Invalid boat placement.")
-            if self.boats_to_place == 0:
-                self.info_label.config(text="Confirm placement to continue.")
+            self.place_boat()
         elif self.view_mode == 'attacks':
+            self.attack()
+
+    def place_boat(self):
+        row, col = self.cursor_position
+        if self.boats_to_place > 0:
+            size = 2
+            orientation = random.choice(['H', 'V'])
+            if self.game.place_boat(self.current_player, row, col, size, orientation):
+                self.boats_to_place -= 1
+                self.info_label.config(text=f"Boat placed at ({row}, {col})")
+                print(f"Boat placed at ({row}, {col})")
+                self.draw_grid()
+            else:
+                messagebox.showerror("Error", "Invalid boat placement.")
+                print(f"Invalid boat placement at ({row}, {col})")
+        if self.boats_to_place == 0:
+            self.info_label.config(text="Confirm placement to continue.")
+            self.place_attack_button.config(text="Attack")
+
+    def attack(self):
+        row, col = self.cursor_position
+        if self.current_player == 'player1':
             if self.game.attack(self.current_player, row, col):
                 self.info_label.config(text=f"Hit at ({row}, {col})!")
             else:
                 self.info_label.config(text=f"Miss at ({row}, {col}).")
-            self.serial_comm.send(f"attack:{row},{col}")
-            self.wait_for_opponent()
+            self.send_attack(row, col)
             self.game.switch_turn()
             self.current_player = self.game.get_current_player()
             self.draw_grid()
+        else:
+            self.receive_attack()
 
-    def wait_for_opponent(self):
-        response = self.serial_comm.receive()
-        if response and response.startswith("attack:"):
-            row, col = map(int, response.split(":", 1)[1].split(","))
-            hit = self.game.attack('player2', row, col)
-            self.serial_comm.send(f"result:{'hit' if hit else 'miss'}")
-            self.info_label.config(text=f"Opponent attacked ({row}, {col}) and it was a {'hit' if hit else 'miss'}.")
-            self.draw_grid()
+    def place_or_attack(self):
+        if self.view_mode == 'placement':
+            self.place_boat()
+        elif self.view_mode == 'attacks':
+            self.attack()
 
     def switch_view(self):
+        if self.view_mode == 'placement':
+            messagebox.showerror("Error", "You must confirm boat placements before switching views.")
+            return
         self.view_mode = 'attacks' if self.view_mode == 'ships' else 'ships'
         self.draw_grid()
 
@@ -164,16 +211,19 @@ class BattleshipApp:
             return
 
         if self.serial_comm is None:
-            messagebox.showerror("Error", "Please connect to a serial device before continuing.")
+            messagebox.showerror("Error", "Please connect to a serial device before confirming.")
             return
 
         positions = self.game.get_boat_positions(self.current_player)
+        positions_str = ' '.join([f"{x},{y}" for x, y in positions])
+
         if self.current_player == 'player1':
-            self.serial_comm.send(f"positions:{positions}")
+            self.serial_comm.send(f"positions:{positions_str}")
             self.info_label.config(text="Waiting for opponent to confirm...")
+            self.wait_for_opponent_confirmation()
         else:
-            self.serial_comm.send(f"ready:{positions}")
-        self.receive_serial_positions()
+            self.serial_comm.send(f"ready:{positions_str}")
+            self.receive_serial_positions()
 
     def receive_serial_positions(self):
         response = self.serial_comm.receive()
@@ -185,6 +235,20 @@ class BattleshipApp:
             self.current_player = 'player1'
             self.draw_grid()
 
+    def send_attack(self, row, col):
+        self.serial_comm.send(f"attack:{row},{col}")
+        self.info_label.config(text="Waiting for opponent's attack...")
+        self.wait_for_opponent_attack()
+
+    def receive_attack(self):
+        response = self.serial_comm.receive()
+        if response and response.startswith("attack:"):
+            row, col = map(int, response.split(":", 1)[1].split(","))
+            hit = self.game.attack('player2', row, col)
+            self.serial_comm.send(f"result:{'hit' if hit else 'miss'}")
+            self.info_label.config(text=f"Opponent attacked ({row}, {col}) and it was a {'hit' if hit else 'miss'}.")
+            self.draw_grid()
+
     def update_scoreboard(self):
         if self.raspberry_pi_ip is None:
             messagebox.showerror("Error", "Please connect to a Raspberry Pi server before updating the scoreboard.")
@@ -194,6 +258,7 @@ class BattleshipApp:
         player1_misses = sum(row.count('O') for row in self.game.get_attacks('player1'))
         player2_hits = sum(row.count('X') for row in self.game.get_attacks('player2'))
         player2_misses = sum(row.count('O') for row in self.game.get_attacks('player2'))
+
         url = f"http://{self.raspberry_pi_ip}:8000/update_scoreboard"
         params = {
             "player1_hits": player1_hits,
@@ -217,16 +282,29 @@ class BattleshipApp:
     def connect_serial(self):
         port = self.serial_devices_combobox.get()
         baudrate = self.baudrate_combobox.get()
+        if port == "" or port.lower() == "none":
+            messagebox.showerror("Error", "Please select a valid serial port.")
+            return
         self.serial_comm = SerialCommunicator(port, baudrate)
+        self.connect_serial_button.configure(bg="green")
         messagebox.showinfo("Serial Connection", "Connected to serial device.")
 
     def connect_ip(self):
-        ip_address = self.ip_entry.get()
-        if not ip_address:
-            messagebox.showerror("Error", "Please enter an IP address.")
-            return
-        self.raspberry_pi_ip = ip_address
-        messagebox.showinfo("IP Connection", f"Connected to Raspberry Pi at {self.raspberry_pi_ip}")
+        if self.connect_ip_button.cget("text") == "Connect":
+            ip_address = self.ip_entry.get()
+            if not ip_address:
+                messagebox.showerror("Error", "Please enter an IP address.")
+                return
+            self.raspberry_pi_ip = ip_address
+            self.ip_entry.configure(state='readonly')
+            self.connect_ip_button.configure(text="Disconnect", bg="green")
+            messagebox.showinfo("IP Connection", f"Connected to Raspberry Pi at {self.raspberry_pi_ip}")
+        else:
+            self.raspberry_pi_ip = None
+            self.ip_entry.configure(state='normal')
+            self.ip_entry.delete(0, tk.END)
+            self.connect_ip_button.configure(text="Connect", bg="red")
+            messagebox.showinfo("IP Connection", "Disconnected from Raspberry Pi")
 
     def _init_serial_devices_combobox(self) -> Combobox:  
         ports = locate_ports() 
@@ -262,3 +340,8 @@ class BattleshipApp:
             activebackground='lightblue'
         )
         return button
+    
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = BattleshipApp(root)
+    root.mainloop()

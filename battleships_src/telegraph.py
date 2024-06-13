@@ -27,12 +27,3 @@ class SerialCommunicator:
 
     def close(self):
         self.ser.close()
-
-# Example usage:
-if __name__ == "__main__":
-    communicator = SerialCommunicator('/dev/ttyUSB0')
-    communicator.send("Hello, Arduino!")
-    while True:
-        response = communicator.receive()
-        if response:
-            print("Received from Arduino:", response)
