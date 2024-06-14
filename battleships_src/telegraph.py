@@ -24,6 +24,9 @@ class SerialCommunicator:
         if self.ser.in_waiting > 0:
             return self.ser.readline().decode().strip()
         return None
+    
+    def readline(self):
+        return self.ser.readline().decode().strip()
 
     def close(self):
         self.ser.close()
