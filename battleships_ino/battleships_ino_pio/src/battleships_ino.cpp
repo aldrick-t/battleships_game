@@ -1,15 +1,15 @@
 #include <MD_MAX72xx.h>
 #include <SPI.h>
 
-// Definir los pines y el tipo de hardware
+// Define hardware type and pins
 #define HARDWARE_TYPE MD_MAX72XX::FC16_HW
 #define MAX_DEVICES 1
 #define CS_PIN 6
 
-// Crear el objeto MD_MAX72XX
+// Create MD_MAX72XX object
 MD_MAX72XX mx = MD_MAX72XX(MD_MAX72XX::FC16_HW, CS_PIN, MAX_DEVICES);
 
-// Definir los botones
+// Define buttons
 #define BTN_RIGHT 2
 #define BTN_LEFT 3
 #define BTN_UP 4
@@ -17,23 +17,23 @@ MD_MAX72XX mx = MD_MAX72XX(MD_MAX72XX::FC16_HW, CS_PIN, MAX_DEVICES);
 #define BTN_ENTER 7
 #define BTN_VIEW 8
 
-// Variables de juego
+// Game variables
 int tablerob[10][2];
 int tableroa[10][2];
 int ataquea[2];
 int ataqueb[2];
-int tableroataqueaa[10][3]; // Coordenada y intensidad
+int tableroataqueaa[10][3]; // Coordinate and intensity
 
 int shipCount = 0;
 int x = 0, y = 0;
 
 unsigned long lastDebounceTime[6] = {0}; 
 unsigned long debounceDelay = 50; 
-bool gameStarted = false; // Variable para controlar si el juego ha comenzado o no
-bool shipsPlaced = false; // Variable para controlar si los barcos han sido colocados
+bool gameStarted = false; // Variable to control if the game has started
+bool shipsPlaced = false; // Variable to control if the ships have been placed
 bool viewMode = false; // false for ship view, true for attack view
 bool opponentTurn = false; // Variable to control the opponent's turn
-int lastAttack[2] = {-1, -1}; // Último ataque recibido
+int lastAttack[2] = {-1, -1}; // Last received attack
 
 // Function declarations
 void placeShips();
@@ -71,12 +71,12 @@ bool readButton(int buttonPin, int buttonIndex) {
 }
 
 void setup() {
-  // Inicializar la matriz
+  // Initialize the matrix
   mx.begin();
   mx.control(MD_MAX72XX::INTENSITY, 1);
   mx.clear();
 
-  // Inicializar los botones
+  // Initialize buttons
   pinMode(BTN_RIGHT, INPUT_PULLUP);
   pinMode(BTN_LEFT, INPUT_PULLUP);
   pinMode(BTN_UP, INPUT_PULLUP);
@@ -84,150 +84,150 @@ void setup() {
   pinMode(BTN_ENTER, INPUT_PULLUP);
   pinMode(BTN_VIEW, INPUT_PULLUP);
 
-// Inicializar la comunicación serie
-Serial.begin(9600);
+  // Initialize serial communication
+  Serial.begin(9600);
 
-// Inicializar las variables de juego
-memset(tablerob, -1, sizeof(tablerob));
-memset(tableroa, -1, sizeof(tableroa));
-memset(ataquea, -1, sizeof(ataquea));
-memset(ataqueb, -1, sizeof(ataqueb));
-memset(tableroataqueaa, -1, sizeof(tableroataqueaa));
+  // Initialize game variables
+  memset(tablerob, -1, sizeof(tablerob));
+  memset(tableroa, -1, sizeof(tableroa));
+  memset(ataquea, -1, sizeof(ataquea));
+  memset(ataqueb, -1, sizeof(ataqueb));
+  memset(tableroataqueaa, -1, sizeof(tableroataqueaa));
 }
 
 void loop() {
-if (readButton(BTN_VIEW, 5)) { // Assuming the view button is the 6th button
-switchView();
-}
+  if (readButton(BTN_VIEW, 5)) { // Assuming the view button is the 6th button
+    switchView();
+  }
 
-if (!gameStarted) { // Si el juego no ha comenzado
-placeShips(); // Ubica los barcos
-gameStarted = true; // Cambia el estado para indicar que el juego ha comenzado
-} else {
-if (!shipsPlaced) { // Si los barcos no han sido colocados
-placeShips(); // Continuar ubicando los barcos
-} else {
-if (viewMode) { // Attack mode
-moveCursorForAttack();
-} else {
-receiveAttack(); // Recibir ataques
-}
-}
-}
+  if (!gameStarted) { // If the game has not started
+    placeShips(); // Place the ships
+    gameStarted = true; // Change the state to indicate that the game has started
+  } else {
+    if (!shipsPlaced) { // If the ships have not been placed
+      placeShips(); // Continue placing the ships
+    } else {
+      if (viewMode) { // Attack mode
+        moveCursorForAttack();
+      } else {
+        receiveAttack(); // Receive attacks
+      }
+    }
+  }
 }
 
 void switchView() {
-viewMode = !viewMode;
-if (viewMode) {
-// Display the attack view
-displayAttackView();
-} else {
-// Display the ship view
-displayShipView();
-}
+  viewMode = !viewMode;
+  if (viewMode) {
+    // Display the attack view
+    displayAttackView();
+  } else {
+    // Display the ship view
+    displayShipView();
+  }
 }
 
 void displayShipView() {
-mx.clear();
-for (int i = 0; i < 5; i++) {
-if (tablerob[i][0] != -1) {
-mx.setPoint(tablerob[i][1], tablerob[i][0], true);
-mx.setPoint(tablerob[i][1], tablerob[i][0] + 1, true);
-}
-}
-// Flash the latest attack received
-if (lastAttack[0] != -1 && lastAttack[1] != -1) {
-for (int i = 0; i < 5; i++) {
-mx.setPoint(lastAttack[1], lastAttack[0], i % 2 == 0);
-delay(100);
-}
-mx.setPoint(lastAttack[1], lastAttack[0], false);  // Turn off LED after flashing
-}
+  mx.clear();
+  for (int i = 0; i < 5; i++) {
+    if (tablerob[i][0] != -1) {
+      mx.setPoint(tablerob[i][1], tablerob[i][0], true);
+      mx.setPoint(tablerob[i][1], tablerob[i][0] + 1, true);
+    }
+  }
+  // Flash the latest attack received
+  if (lastAttack[0] != -1 && lastAttack[1] != -1) {
+    for (int i = 0; i < 5; i++) {
+      mx.setPoint(lastAttack[1], lastAttack[0], i % 2 == 0);
+      delay(100);
+    }
+    mx.setPoint(lastAttack[1], lastAttack[0], false);  // Turn off LED after flashing
+  }
 }
 
 void displayAttackView() {
-mx.clear();
-for (int i = 0; i < 10; i++) {
-if (tableroataqueaa[i][0] != -1) {
-mx.setPoint(tableroataqueaa[i][1], tableroataqueaa[i][0], true);
-}
-}
-// Show the cursor for attack
-if (!opponentTurn) {
-mx.setPoint(y, x, true);
-}
+  mx.clear();
+  for (int i = 0; i < 10; i++) {
+    if (tableroataqueaa[i][0] != -1) {
+      mx.setPoint(tableroataqueaa[i][1], tableroataqueaa[i][0], true);
+    }
+  }
+  // Show the cursor for attack
+  if (!opponentTurn) {
+    mx.setPoint(y, x, true);
+  }
 }
 
 void placeShips() {
-displayCursorSHIPS(x, y);
+  displayCursorSHIPS(x, y);
 
-if (readButton(BTN_RIGHT, 0)) {
-if (x < 6) {  // Check to prevent moving out of the right boundary
-x = (x + 1) % 8;
-}
-}
-if (readButton(BTN_LEFT, 1)) {
-if (x > 0) {  // Check to prevent moving out of the left boundary
-x = (x - 1 + 8) % 8;
-}
-}
-if (readButton(BTN_UP, 2)) {
-y = (y - 1 + 8) % 8;
-}
-if (readButton(BTN_DOWN, 3)) {
-y = (y + 1) % 8;
-}
-
-if (readButton(BTN_ENTER, 4)) {
-if (shipCount < 5) {
-tablerob[shipCount][0] = x;
-tablerob[shipCount][1] = y;
-shipCount++;
-mx.setPoint(y, x, true);
-mx.setPoint(y, x + 1, true);  // Set the second part of the ship
-  // Verificar si todos los barcos han sido colocados
-  if (shipCount == 5) {
-    shipsPlaced = true; // Cambiar el estado para indicar que los barcos han sido colocados
-    
-    // Send ship coordinates to Raspberry Pi
-    for (int i = 0; i < 5; i++) {
-      Serial.print(tablerob[i][0]);
-      Serial.print(",");
-      Serial.print(tablerob[i][1]);
-      Serial.print(",");
-      Serial.print(tablerob[i][0] + 1);
-      Serial.print(",");
-      Serial.print(tablerob[i][1]);
-      if (i < 4) Serial.print(" ");
+  if (readButton(BTN_RIGHT, 0)) {
+    if (x < 6) {  // Check to prevent moving out of the right boundary
+      x = (x + 1) % 8;
     }
-    Serial.println(" positions");  // Add " positions" to indicate all ships are placed
-
-    // Send confirmation to Raspberry Pi
-    Serial.println("ready");
   }
-}
-}
+  if (readButton(BTN_LEFT, 1)) {
+    if (x > 0) {  // Check to prevent moving out of the left boundary
+      x = (x - 1 + 8) % 8;
+    }
+  }
+  if (readButton(BTN_UP, 2)) {
+    y = (y - 1 + 8) % 8;
+  }
+  if (readButton(BTN_DOWN, 3)) {
+    y = (y + 1) % 8;
+  }
+
+  if (readButton(BTN_ENTER, 4)) {
+    if (shipCount < 5) {
+      tablerob[shipCount][0] = x;
+      tablerob[shipCount][1] = y;
+      shipCount++;
+      mx.setPoint(y, x, true);
+      mx.setPoint(y, x + 1, true);  // Set the second part of the ship
+      // Check if all ships have been placed
+      if (shipCount == 5) {
+        shipsPlaced = true; // Change the state to indicate that the ships have been placed
+        
+        // Send ship coordinates to Raspberry Pi
+        for (int i = 0; i < 5; i++) {
+          Serial.print(tablerob[i][0]);
+          Serial.print(",");
+          Serial.print(tablerob[i][1]);
+          Serial.print(" ");
+          Serial.print(tablerob[i][0] + 1);
+          Serial.print(",");
+          Serial.print(tablerob[i][1]);
+          if (i < 4) Serial.print(" ");
+        }
+        Serial.println(" positions");  // Add " positions" to indicate all ships are placed
+
+        // Send confirmation to Raspberry Pi
+        Serial.println("ready");
+      }
+    }
+  }
 }
 
 void displayCursorSHIPS(int x, int y) {
-mx.clear();
-for (int i = 0; i < 5; i++) {
-if (tablerob[i][0] != -1) {
-mx.setPoint(tablerob[i][1], tablerob[i][0], true);
-mx.setPoint(tablerob[i][1], tablerob[i][0] + 1, true);  // Set the second part of the ship
-}
-}
-mx.setPoint(y, x, true);
-mx.setPoint(y, x + 1, true);  // Set the second part of the ship
+  mx.clear();
+  for (int i = 0; i < 5; i++) {
+    if (tablerob[i][0] != -1) {
+      mx.setPoint(tablerob[i][1], tablerob[i][0], true);
+      mx.setPoint(tablerob[i][1], tablerob[i][0] + 1, true);  // Set the second part of the ship
+    }
+  }
+  mx.setPoint(y, x, true);
+  mx.setPoint(y, x + 1, true);  // Set the second part of the ship
 }
 
 void receiveShipCoordinates() {
-if (Serial.available()) {
-String data = Serial.readStringUntil('\n');
-int index = 0;
-int commaIndex = data.indexOf(',');
+  if (Serial.available()) {
+    String data = Serial.readStringUntil('\n');
+    int index = 0;
+    int commaIndex = data.indexOf(',');
 
-while (commaIndex != -1 && index < 10) {
+    while (commaIndex != -1 && index < 10) {
   int x = data.substring(0, commaIndex).toInt();
   data = data.substring(commaIndex + 1);
   commaIndex = data.indexOf(',');
@@ -238,6 +238,7 @@ while (commaIndex != -1 && index < 10) {
   commaIndex = data.indexOf(',');
   index++;
 }
+
 }
 }
 
@@ -245,7 +246,6 @@ void receiveAttack() {
 if (Serial.available()) {
 String data = Serial.readStringUntil('\n');
 int commaIndex = data.indexOf(',');
-
 if (commaIndex != -1) {
   ataquea[0] = data.substring(0, commaIndex).toInt();
   ataquea[1] = data.substring(commaIndex + 1).toInt();
@@ -321,12 +321,12 @@ mx.setPoint(y, x, i % 2 == 0);
 delay(100);
 }
 mx.setPoint(y, x, false);  // Turn off LED after flashing
-  // Save attack on player A's board
-  for (int i = 0; i < 10; i++) {
-    if (tableroataqueaa[i][0] == -1) {
-tableroataqueaa[i][0] = x;
-tableroataqueaa[i][1] = y;
-tableroataqueaa[i][2] = 1; // Mark as attacked
+// Save attack on player A’s board
+for (int I = 0; I < 10; I++) {
+if (tableroataqueaa[I][0] == -1) {
+tableroataqueaa[I][0] = x;
+tableroataqueaa[I][1] = y;
+tableroataqueaa[I][2] = 1; // Mark as attacked
 break;
 }
 }
