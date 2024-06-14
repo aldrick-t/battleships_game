@@ -252,7 +252,7 @@ if (commaIndex != -1) {
 
   bool hit = false;
   int hitIndex = -1;
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < 10; i++) {
     if (tablerob[i][0] == ataquea[0] && tablerob[i][1] == ataquea[1]) {
       hit = true;
       hitIndex = i;
