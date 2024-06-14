@@ -35,6 +35,13 @@ bool viewMode = false; // false for ship view, true for attack view
 bool opponentTurn = false; // Variable to control the opponent's turn
 int lastAttack[2] = {-1, -1}; // Last received attack
 
+// PWM variables
+int brightness = 255; // Full brightness
+unsigned long lastUpdateTime = 0;
+int pwmState = 0;
+bool lastAttackHit = false; // Variable para indicar si el último ataque fue un acierto o no
+
+
 // Function declarations
 void placeShips();
 void receiveAttack();
@@ -45,6 +52,8 @@ void displayShipView();
 void displayAttackView();
 void moveCursorForAttack();
 bool readButton(int buttonPin, int buttonIndex);
+void updateDisplay();
+void pwmControlLED(int row, int col, bool hit); // Declaración de la función pwmControlLED
 
 bool readButton(int buttonPin, int buttonIndex) {
   static bool lastButtonState[6] = {HIGH, HIGH, HIGH, HIGH, HIGH, HIGH};
@@ -114,6 +123,9 @@ void loop() {
       }
     }
   }
+
+  // Always update the display to ensure the cursor is shown
+  updateDisplay();
 }
 
 void switchView() {
@@ -145,6 +157,19 @@ void displayShipView() {
   }
 }
 
+//void displayAttackView() {
+  //mx.clear();
+  //for (int i = 0; i < 10; i++) {
+  //  if (tableroataqueaa[i][0] != -1) {
+  //    mx.setPoint(tableroataqueaa[i][1], tableroataqueaa[i][0], true);
+  //  }
+  //}
+  // Show the cursor for attack
+  //if (!opponentTurn) {
+  //  mx.setPoint(y, x, true);
+  //}
+//}
+
 void displayAttackView() {
   mx.clear();
   for (int i = 0; i < 10; i++) {
@@ -152,11 +177,21 @@ void displayAttackView() {
       mx.setPoint(tableroataqueaa[i][1], tableroataqueaa[i][0], true);
     }
   }
-  // Show the cursor for attack
+
+  // Mostrar el cursor para el ataque
   if (!opponentTurn) {
     mx.setPoint(y, x, true);
   }
+
+  // Parpadeo del último ataque recibido si hubo un acierto
+  if (lastAttack[0] != -1 && lastAttack[1] != -1) {
+    pwmControlLED(lastAttack[1], lastAttack[0], lastAttackHit);
+  } else {
+    // Si no hubo ataque reciente, asegúrate de apagar el LED si está encendido
+    mx.setPoint(lastAttack[1], lastAttack[0], false);
+  }
 }
+
 
 void placeShips() {
   displayCursorSHIPS(x, y);
@@ -203,7 +238,7 @@ void placeShips() {
         }
 
         // Send confirmation to Raspberry Pi
-        Serial.println("ready");
+        Serial.println(" ready");
       }
     }
   }
@@ -228,17 +263,16 @@ void receiveShipCoordinates() {
     int commaIndex = data.indexOf(',');
 
     while (commaIndex != -1 && index < 10) {
-  int x = data.substring(0, commaIndex).toInt();
-  data = data.substring(commaIndex + 1);
-  commaIndex = data.indexOf(',');
-  int y = data.substring(0, commaIndex).toInt();
-  tableroa[index][0] = x;
-  tableroa[index][1] = y;
-  data = data.substring(commaIndex + 1);
-  commaIndex = data.indexOf(',');
-  index++;
+      int x = data.substring(0, commaIndex).toInt();
+      data = data.substring(commaIndex + 1);
+commaIndex = data.indexOf(',');
+int y = data.substring(0, commaIndex).toInt();
+tableroa[index][0] = x;
+tableroa[index][1] = y;
+data = data.substring(commaIndex + 1);
+commaIndex = data.indexOf(',');
+index++;
 }
-
 }
 }
 
@@ -247,14 +281,15 @@ if (Serial.available()) {
 String data = Serial.readStringUntil('\n');
 int commaIndex = data.indexOf(',');
 if (commaIndex != -1) {
-  ataquea[0] = data.substring(0, commaIndex).toInt();
-  ataquea[1] = data.substring(commaIndex + 1).toInt();
+ataquea[0] = data.substring(0, commaIndex).toInt();
+ataquea[1] = data.substring(commaIndex + 1).toInt();
 
   bool hit = false;
   int hitIndex = -1;
   for (int i = 0; i < 10; i++) {
     if (tablerob[i][0] == ataquea[0] && tablerob[i][1] == ataquea[1]) {
       hit = true;
+      lastAttackHit = true;
       hitIndex = i;
       break;
     }
@@ -263,7 +298,7 @@ if (commaIndex != -1) {
   // Flash LED at attacked coordinate
   for (int i = 0; i < 5; i++) {
     mx.setPoint(ataquea[1], ataquea[0], i % 2 == 0);
-    delay(100);
+    delay(300);
   }
   mx.setPoint(ataquea[1], ataquea[0], false);  // Turn off LED after flashing
 
@@ -292,6 +327,7 @@ if (commaIndex != -1) {
   opponentTurn = false;  // Switch to player's turn
   switchView();
 }
+
 }
 }
 
@@ -315,22 +351,53 @@ Serial.print("attack:");
 Serial.print(x);
 Serial.print(",");
 Serial.println(y);
-// Flash LED at attacked coordinate
-for (int i = 0; i < 5; i++) {
-mx.setPoint(y, x, i % 2 == 0);
-delay(100);
+  // Flash LED at attacked coordinate
+  for (int i = 0; i < 5; i++) {
+    mx.setPoint(y, x, i % 2 == 0);
+    delay(100);
+  }
+  mx.setPoint(y, x, false);  // Turn off LED after flashing
+
+  // Save attack on player A's board
+  for (int i = 0; i < 10; i++) {
+    if (tableroataqueaa[i][0] == -1) {
+      tableroataqueaa[i][0] = x;
+      tableroataqueaa[i][1] = y;
+      tableroataqueaa[i][2] = 1; // Mark as attacked
+      break;
+    }
+  }
+  opponentTurn = true;  // Switch to opponent’s turn
 }
-mx.setPoint(y, x, false);  // Turn off LED after flashing
-// Save attack on player A’s board
-for (int I = 0; I < 10; I++) {
-if (tableroataqueaa[I][0] == -1) {
-tableroataqueaa[I][0] = x;
-tableroataqueaa[I][1] = y;
-tableroataqueaa[I][2] = 1; // Mark as attacked
-break;
 }
 }
-opponentTurn = true;  // Switch to opponent’s turn
+
+void updateDisplay() {
+if (viewMode) {
+displayAttackView();
+} else {
+displayShipView();
 }
 }
+
+void pwmControlLED(int row, int col, bool hit) {
+  unsigned long currentTime = millis();
+  static unsigned long lastFlashTime = 0;
+  static bool flashState = false;
+
+  if (currentTime - lastUpdateTime > 30) { // Ajusta el intervalo de tiempo para una transición suave
+    lastUpdateTime = currentTime;
+
+    if (hit) {
+      if (currentTime - lastFlashTime > 500) { // Intervalo de parpadeo de 500ms (cambia según sea necesario)
+        lastFlashTime = currentTime;
+        flashState = !flashState;
+      }
+
+      brightness = flashState ? 255 : 0; // Brillo completo o apagado dependiendo del estado de parpadeo
+      mx.control(MD_MAX72XX::INTENSITY, brightness);
+    } else {
+      mx.setPoint(row, col, true); // Mantén el LED encendido si no hubo acierto
+    }
+  }
 }
