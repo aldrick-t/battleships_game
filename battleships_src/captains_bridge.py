@@ -13,7 +13,6 @@ from tkinter import ttk
 from tkinter.ttk import Combobox
 import random
 import requests
-
 from telegraph import BAUDRATES, SerialCommunicator
 from utils import locate_ports
 from third_deck_debug import BattleshipGame
@@ -34,7 +33,11 @@ class BattleshipApp:
         self.last_opponent_attack = None
         self.opponent_turn = False
 
+        self.button_grid = [[None for _ in range(8)] for _ in range(8)]
+
         self.setup_ui()
+        self.create_buttons()
+        self.draw_grid()
 
     def setup_ui(self):
         self.root.title("Battleship Game")
@@ -103,13 +106,18 @@ class BattleshipApp:
         self.switch_button.configure(bg="white")
         self.confirm_button.configure(bg="white")
 
-        self.draw_grid()
-
         self.root.bind('<Up>', self.move_up)
         self.root.bind('<Down>', self.move_down)
         self.root.bind('<Left>', self.move_left)
         self.root.bind('<Right>', self.move_right)
         self.root.bind('<Return>', self.select_position)
+
+    def create_buttons(self):
+        for row in range(8):
+            for col in range(8):
+                button = tk.Button(self.grid_frame, width=2, height=1)
+                button.grid(row=row, column=col)
+                self.button_grid[row][col] = button
 
     def draw_grid(self):
         for row in range(8):
@@ -118,8 +126,8 @@ class BattleshipApp:
                     value = self.game.get_board(self.current_player)[row][col]
                 else:
                     value = self.game.get_attacks(self.current_player)[row][col]
-                button = tk.Button(self.grid_frame, text=value, width=2, height=1)
-                button.grid(row=row, column=col)
+                button = self.button_grid[row][col]
+                button.config(text=value)
                 if [row, col] == self.cursor_position:
                     button.config(bg='yellow')
                 elif value == 'X':
@@ -165,11 +173,9 @@ class BattleshipApp:
             if self.game.place_boat(self.current_player, row, col, size, orientation):
                 self.boats_to_place -= 1
                 self.info_label.config(text=f"Boat placed at ({row}, {col})")
-                print(f"Boat placed at ({row}, {col})")
                 self.draw_grid()
             else:
                 messagebox.showerror("Error", "Invalid boat placement.")
-                print(f"Invalid boat placement at ({row}, {col})")
         if self.boats_to_place == 0:
             self.info_label.config(text="Confirm placement to continue.")
             self.place_attack_button.config(text="Attack")
@@ -180,14 +186,14 @@ class BattleshipApp:
             if self.game.attack(self.current_player, row, col):
                 self.info_label.config(text=f"Hit at ({row}, {col})!")
                 self.serial_comm.send(f"hit:{row},{col}")
+                self.opponent_turn = True
+                self.check_for_opponent_attack()
             else:
                 self.info_label.config(text=f"Miss at ({row}, {col}).")
                 self.serial_comm.send(f"miss:{row},{col}")
+                self.opponent_turn = True
+                self.check_for_opponent_attack()
             self.draw_grid()
-            self.opponent_turn = True
-            self.root.after(2000, self.wait_for_opponent_attack)
-        else:
-            self.receive_attack()
 
     def place_or_attack(self):
         if not self.opponent_turn:
@@ -204,7 +210,7 @@ class BattleshipApp:
         self.switch_button.config(text="Switch to Ship View" if self.view_mode == 'attacks' else "Switch to Attack View")
         self.switch_button.config(bg="lightgreen" if self.view_mode == 'attacks' else "lightblue")
         self.draw_grid()
-
+        
     def confirm_placement(self):
         if self.boats_to_place > 0:
             messagebox.showerror("Error", "You must place all boats before confirming.")
@@ -218,7 +224,7 @@ class BattleshipApp:
 
         self.serial_comm.send(f"positions:{positionsA_str} ready")
         self.wait_for_opponent_confirmation()
-            
+
     def parse_boat_positions(self, serial_data):
         positions = []
         try:
@@ -230,11 +236,10 @@ class BattleshipApp:
         except Exception as e:
             print(f"Error parsing boat positions: {e}")
         return positions
-    
 
     def wait_for_opponent_confirmation(self):
         self.info_label.config(text="Waiting for opponent to confirm...")
-        self.root.after(1000, self.check_for_opponent_confirmation)
+        self.check_for_opponent_confirmation()
 
     def check_for_opponent_confirmation(self):
         if self.serial_comm:
@@ -242,23 +247,15 @@ class BattleshipApp:
             if response and response.startswith("positions:"):
                 boat_positions = self.parse_boat_positions(response.replace("positions:", "").replace("ready", "").strip())
                 self.game.set_boat_positions('player2', boat_positions)
-                print(f"PlayerB boat positions: {boat_positions}")
                 self.info_label.config(text="Opponent confirmed. Game start!")
                 self.view_mode = 'attacks'
                 self.current_player = 'player1'
                 self.draw_grid()
-            else:
-                self.root.after(1000, self.check_for_opponent_confirmation)
+                self.prompt_player_attack()
 
-    
-                
     def send_attack(self, row, col):
         self.serial_comm.send(f"attack:{row},{col}")
-        self.wait_for_opponent_attack()
-
-    def wait_for_opponent_attack(self):
         self.check_for_opponent_attack()
-        self.root.after(1000, self.wait_for_opponent_attack)
 
     def check_for_opponent_attack(self):
         if self.serial_comm:
@@ -269,14 +266,17 @@ class BattleshipApp:
                 if self.game.attack('player2', row, col):
                     self.info_label.config(text=f"PlayerB hits at ({row}, {col})!")
                     self.serial_comm.send(f"hit:{row},{col}")
+                    self.draw_grid()
+                    self.prompt_player_attack()
                 else:
                     self.info_label.config(text=f"PlayerB misses at ({row}, {col}).")
                     self.serial_comm.send(f"miss:{row},{col}")
-                self.draw_grid()
-                self.root.after(2000, self.prompt_player_attack)
-
-
-    
+                    self.draw_grid()
+                    self.prompt_player_attack()
+                
+                
+            else:
+                self.check_for_opponent_attack()
 
     def prompt_player_attack(self):
         self.info_label.config(text="Your turn to attack.")
@@ -368,7 +368,6 @@ class BattleshipApp:
         button = tk.Button(self.root, text='Connect', command=self.connect_serial, bg='lightblue', activebackground='lightblue')
         return button
     
-        
 if __name__ == "__main__":
     root = tk.Tk()
     app = BattleshipApp(root)
