@@ -189,6 +189,7 @@ void placeShips() {
       if (shipCount == 5) {
         shipsPlaced = true; // Change the state to indicate that the ships have been placed
         
+        Serial.print("positions:");  // Add " positions" to indicate all ships are placed
         // Send ship coordinates to Raspberry Pi
         for (int i = 0; i < 5; i++) {
           Serial.print(tablerob[i][0]);
@@ -200,7 +201,6 @@ void placeShips() {
           Serial.print(tablerob[i][1]);
           if (i < 4) Serial.print(" ");
         }
-        Serial.println(" positions");  // Add " positions" to indicate all ships are placed
 
         // Send confirmation to Raspberry Pi
         Serial.println("ready");
