@@ -1,3 +1,10 @@
+# 
+#   Battleships Game: Serial Communication Module.
+#   Serial comms are handled through this class.
+#   By: aldrick-t (github.com/aldrick-t)
+#   Version: June 2024 (v0.1.2) python3.11.2
+#   
+
 import serial
 import time
 

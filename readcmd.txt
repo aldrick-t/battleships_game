@@ -1,3 +1,5 @@
+File with basic commands that might be necessary to run some features of the project.
+
 Activate Python Virtual Environment:
     sh:
     source <path>/bin/activate

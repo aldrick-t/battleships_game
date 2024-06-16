@@ -1,3 +1,14 @@
+// 
+//   Battleships Game: Arduino Console Program.
+//   Arduino C++ code for the opponent connected through serial to the host device.
+//   The opponent places ships on the board and receives and sends attacks to and from the host.
+//   The opponent's board is displayed on the 8x8 LED matrix controlled by the MD_MAX7219 controller chip.
+//   User can use the basic buttons as input.
+//   By: aldrick-t (github.com/aldrick-t), ArlesMolina (github.com/ArlesMolina)
+//   Version: June 2024 (v0.2.1) 
+//  
+
+
 #include <MD_MAX72xx.h>
 #include <SPI.h>
 

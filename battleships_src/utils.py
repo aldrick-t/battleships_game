@@ -1,3 +1,10 @@
+#   
+#   Battleships Game: Extra Utilities.
+#   Contains extra utilities, such as a port locator for serial communication on any OS.
+#   By: aldrick-t (github.com/aldrick-t)
+#   Version: June 2024 (v0.3.0) python3.11.2
+#   
+
 import sys
 import glob
 

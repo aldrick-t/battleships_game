@@ -1,3 +1,11 @@
+# 
+#   Battleships Game: Radio Tower Webserver for Scoreboard.
+#   Webserver used to display the scoreboard of the game, connected by any browser to dislpay the scoreboard in HTML.
+#   The scoreboard is updated by the game server, and the server will display the updated scoreboard.
+#   By: aldrick-t (github.com/aldrick-t)
+#   Version: June 2024 (v1.0) python3.11.2
+#   
+
 from fastapi import FastAPI, WebSocket, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates

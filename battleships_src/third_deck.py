@@ -1,4 +1,10 @@
-import random
+#   OBSOLTE FILE, REFERENCE ONLY, REFER TO battleships_src/third_deck_debug.py
+#   Battleships Game: Obsolete Backend of the Python App.
+#   Contains the second level of implementations of the Battleships Game.
+#   Most game logic functions are implemented here.
+#   By: aldrick-t (github.com/aldrick-t)
+#   Version: June 2024 (v0.1.1) python3.11.2
+#   
 
 class BattleshipGame:
     def __init__(self):

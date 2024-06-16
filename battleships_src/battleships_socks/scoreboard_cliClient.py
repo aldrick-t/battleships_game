@@ -1,3 +1,11 @@
+# 
+#   Battleships Game: TCP Scoreboard Client Utility.
+#   This module is a client utility to receive the scoreboard data from the server.
+#   Tu be run from any device in the LAN.
+#   By: aldrick-t (github.com/aldrick-t)
+#   Version: June 2024 (v0.2.1) python3.11.2
+#   
+
 import socket
 
 def receive_data_from_server(ip, port):

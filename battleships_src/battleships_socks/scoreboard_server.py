@@ -1,3 +1,11 @@
+# 
+#   Battleships Game: TCP Scoreboard Server Utility.
+#   This script implements a TCP server that provides a scoreboard for the Battleships game.
+#   The server listens for incoming connections and sends the current scoreboard data to clients.
+#   By: aldrick-t (github.com/aldrick-t)
+#   Version: June 2024 (v0.1.1) python3.11.2
+#   
+
 import socket
 import threading
 

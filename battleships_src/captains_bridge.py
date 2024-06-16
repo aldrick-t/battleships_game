@@ -4,7 +4,7 @@
 #   Base to be run on a Linux server distro. like Raspberry Pi.
 #   Main Python App file, portable with required utility files to multiple OS's running python3.
 #   By: aldrick-t (github.com/aldrick-t)
-#   Version: June 2024 (v0.1.2) python3.11.2
+#   Version: June 2024 (v0.2.1) python3.11.2
 #   
 
 import tkinter as tk

@@ -1,4 +1,11 @@
-import random
+# 
+#   Battleships Game: Backend of the Python App.
+#   Contains the second level of implementations of the Battleships Game.
+#   Most game logic functions are implemented here.
+#   Debug messages are printed to the console in this version.
+#   By: aldrick-t (github.com/aldrick-t)
+#   Version: June 2024 (v0.3.0) python3.11.2
+#   
 
 class BattleshipGame:
     def __init__(self):
