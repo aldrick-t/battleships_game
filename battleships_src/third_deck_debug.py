@@ -1,9 +1,10 @@
-#   OBSOLTE FILE, REFERENCE ONLY, REFER TO battleships_src/third_deck_debug.py
-#   Battleships Game: Obsolete Backend of the Python App.
+# 
+#   Battleships Game: Backend of the Python App.
 #   Contains the second level of implementations of the Battleships Game.
 #   Most game logic functions are implemented here.
+#   Debug messages are printed to the console in this version.
 #   By: aldrick-t (github.com/aldrick-t)
-#   Version: June 2024 (v0.1.1) python3.11.2
+#   Version: June 2024 (v0.3.0) python3.11.2
 #   
 
 class BattleshipGame:
@@ -46,12 +47,16 @@ class BattleshipGame:
 
     def attack(self, player, row, col):
         opponent = 'player2' if player == 'player1' else 'player1'
+        print(f"Attacking ({row}, {col}) on {opponent}")
+        print(f"{opponent} boat positions: {self.boat_positions[opponent]}")
         if (row, col) in self.boat_positions[opponent]:
             self.player_boards[opponent][row][col] = 'X'
             self.attacks[player][row][col] = 'X'
+            print(f"Hit at ({row}, {col})")
             return True
         else:
             self.attacks[player][row][col] = 'O'
+            print(f"Miss at ({row}, {col})")
             return False
 
     def get_board(self, player):

@@ -2,7 +2,7 @@
 Battleships game developed for multiplatform multiplayer: from a custom handheld device, locally on RasPi or linux based machine or LAN device. To be hosted on a Linux based machine like Raspberry Pi.
 
 ## Details
-Web server hosts a website through a TCP websocket to view a scoreboard, web server will also permit LAN device connections later on.
+Web server hosts a website to view a scoreboard, devices on LAN can also connect to a TCP socket server with a dedicated client to view the scoreboard, web server will also permit LAN device connections later on.
 
 Development of a custom hardware device to connect to host device (Raspi) through Serial communication. This is originally designed based upon an Arduino or directly an AVR microprocessor.
 
