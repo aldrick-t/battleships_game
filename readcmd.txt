@@ -1,0 +1,40 @@
+Activate Python Virtual Environment:
+    sh:
+    source <path>/bin/activate
+
+Deactivate Python Virtual Environment:
+    sh: (within venv)
+    deactivate
+
+Confirm Virtual Environment pip:
+    sh:
+    which pip
+
+Install Dependencies:
+    sh:
+    pip install -r requirements.txt
+
+Run Python App (captains_bridge.py):
+    sh: (from local directory ../battleships_game/battleships_src/)
+    python captains_bridge.py
+
+Start Scoreboard Web Server:
+    sh: (asuming port 8000, can be changed)
+    uvicorn radio_tower:app --host 0.0.0.0 -port 8000
+
+Kill Scoreboard Web Server:
+    Sh: (Keyb)
+    Ctrl+C
+
+Kill/Clear Occupied Port:
+    sh: (asuming port 8000, change to setup in server start)
+    fuser -k 8000/tcp
+
+Start Scoreboard Server (TCP):
+    sh:
+    python scoreboard_server.py
+
+Run Scoreboard CLI Client (TCP):
+    sh:
+    python cli_client.py
+
