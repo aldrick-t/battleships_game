@@ -1,16 +1,16 @@
 # About
-Battleships game developed on Python and Arduino C++ for multiplatform multiplayer: from a custom handheld device, locally on RasPi or linux based machine, LAN device or LAN website. To be hosted on a Linux based machine like a Raspberry Pi.
+Battleships game developed for multiplatform multiplayer: from a custom handheld device, locally on RasPi or linux based machine or LAN device. To be hosted on a Linux based machine like Raspberry Pi.
 
 ## Details
-Webserver hosts a website through a TCP websocket for easy conectivity and gameplay over LAN.
+Web server hosts a website to view a scoreboard, devices on LAN can also connect to a TCP socket server with a dedicated client to view the scoreboard, web server will also permit LAN device connections later on.
 
-Possibility to connect a custom hardware device through Serial communication. This is originally meant to be designed based upon an Arduino or directly an AVR microprocessor.
+Development of a custom hardware device to connect to host device (Raspi) through Serial communication. This is originally designed based upon an Arduino or directly an AVR microprocessor.
 
-Main game is a simple python application that can be run on the host device or run on any device on the same LAN and connected remotely.
+Main game is a simple python application that can be run on the host device or any device on the same LAN and connected remotely (future addition).
 
 Designed for a Raspberry Pi 4 B running a Linux distro like Raspbian.
 
-## Design Team
+## Design & Dev. Team
 Aldrick Tadeo: [aldrick-t](https://github.com/aldrick-t)
 
 Daniel De Regules: [DaniDRG04](https://github.com/DaniDRG04)
